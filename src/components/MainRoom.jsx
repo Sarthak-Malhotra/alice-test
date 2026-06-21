@@ -16,7 +16,7 @@ const OBJECTS = [
   { id: 'hearts', type: 'cabinet', x: MAP_WIDTH - 100 - CABINET_SIZE, y: MAP_HEIGHT - 100 - CABINET_SIZE, width: CABINET_SIZE, height: CABINET_SIZE, suit: 'hearts', icon: Heart, color: 'var(--heart-color)' }
 ];
 
-const SPEED = 300; // pixels per second
+const SPEED = 300;
 
 export default function MainRoom({ timeLeft, unlockedCabinets, onOpenPuzzle, onAttemptEscape, escaped, isPuzzleActive }) {
   const formatTime = (seconds) => {
@@ -35,7 +35,6 @@ export default function MainRoom({ timeLeft, unlockedCabinets, onOpenPuzzle, onA
   const lastTimeRef = useRef(0);
   const isInteracting = useRef(false);
 
-  // Check collision between two rectangles
   const isColliding = (rect1, rect2) => {
     return (
       rect1.x < rect2.x + rect2.width &&
@@ -45,7 +44,6 @@ export default function MainRoom({ timeLeft, unlockedCabinets, onOpenPuzzle, onA
     );
   };
 
-  // Keyboard Event Listeners
   useEffect(() => {
     const handleKeyDown = (e) => {
       keys.current[e.key.toLowerCase()] = true;
@@ -69,12 +67,10 @@ export default function MainRoom({ timeLeft, unlockedCabinets, onOpenPuzzle, onA
     };
   }, []);
 
-  // Main Game Loop (60 FPS)
   useEffect(() => {
     const update = (time) => {
       if (lastTimeRef.current !== 0 && !isPuzzleActive && !escaped) {
         const deltaTime = (time - lastTimeRef.current) / 1000;
-        // Cap deltaTime to prevent huge jumps if tab was inactive
         const dt = Math.min(deltaTime, 0.1);
 
         let dx = 0;
@@ -85,7 +81,6 @@ export default function MainRoom({ timeLeft, unlockedCabinets, onOpenPuzzle, onA
         if (keys.current['a'] || keys.current['arrowleft']) { dx -= 1; dir.current = 'LEFT'; }
         if (keys.current['d'] || keys.current['arrowright']) { dx += 1; dir.current = 'RIGHT'; }
 
-        // Normalize diagonal movement
         if (dx !== 0 && dy !== 0) {
           const length = Math.sqrt(dx * dx + dy * dy);
           dx /= length;
@@ -96,13 +91,11 @@ export default function MainRoom({ timeLeft, unlockedCabinets, onOpenPuzzle, onA
         let nextX = pos.current.x + dx * moveDistance;
         let nextY = pos.current.y + dy * moveDistance;
 
-        // Map Boundary Collision
         if (nextX < 0) nextX = 0;
         if (nextY < 0) nextY = 0;
         if (nextX > MAP_WIDTH - PLAYER_SIZE) nextX = MAP_WIDTH - PLAYER_SIZE;
         if (nextY > MAP_HEIGHT - PLAYER_SIZE) nextY = MAP_HEIGHT - PLAYER_SIZE;
 
-        // Object Collision X axis
         const rectX = { x: nextX, y: pos.current.y, width: PLAYER_SIZE, height: PLAYER_SIZE };
         let collidesX = false;
         for (const obj of OBJECTS) {
@@ -110,7 +103,6 @@ export default function MainRoom({ timeLeft, unlockedCabinets, onOpenPuzzle, onA
         }
         if (!collidesX) pos.current.x = nextX;
 
-        // Object Collision Y axis
         const rectY = { x: pos.current.x, y: nextY, width: PLAYER_SIZE, height: PLAYER_SIZE };
         let collidesY = false;
         for (const obj of OBJECTS) {
@@ -118,11 +110,9 @@ export default function MainRoom({ timeLeft, unlockedCabinets, onOpenPuzzle, onA
         }
         if (!collidesY) pos.current.y = nextY;
 
-        // Handle Interaction
         if (isInteracting.current) {
-          isInteracting.current = false; // Trigger once
+          isInteracting.current = false;
           
-          // Create an interaction box in front of the player
           let intX = pos.current.x;
           let intY = pos.current.y;
           const INT_SIZE = 20;
@@ -140,7 +130,6 @@ export default function MainRoom({ timeLeft, unlockedCabinets, onOpenPuzzle, onA
           };
 
           for (const obj of OBJECTS) {
-            // Expand object hitboxes slightly for interaction forgiveness
             const interactBox = { x: obj.x - 10, y: obj.y - 10, width: obj.width + 20, height: obj.height + 20 };
             if (isColliding(interactionRect, interactBox)) {
               if (obj.id === 'escape' && allUnlocked) onAttemptEscape();
@@ -149,7 +138,6 @@ export default function MainRoom({ timeLeft, unlockedCabinets, onOpenPuzzle, onA
           }
         }
 
-        // Apply DOM updates manually for 60FPS performance
         if (playerRef.current) {
           playerRef.current.style.transform = `translate(${pos.current.x}px, ${pos.current.y}px) rotate(${getPlayerRotation()})`;
         }
@@ -163,7 +151,6 @@ export default function MainRoom({ timeLeft, unlockedCabinets, onOpenPuzzle, onA
     return () => cancelAnimationFrame(requestRef.current);
   }, [isPuzzleActive, escaped, allUnlocked, unlockedCabinets, onOpenPuzzle, onAttemptEscape]);
 
-  // Handle Rotation calculation for rendering
   const getPlayerRotation = () => {
     if (dir.current === 'UP') return '0deg';
     if (dir.current === 'DOWN') return '180deg';
@@ -174,8 +161,6 @@ export default function MainRoom({ timeLeft, unlockedCabinets, onOpenPuzzle, onA
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', zIndex: 10 }}>
-      
-      {/* UI Overlay */}
       <div className="glass-panel" style={{ padding: '10px 40px', background: 'rgba(10, 10, 15, 0.9)', border: '1px solid #333', marginBottom: '30px' }}>
         <h1 style={{ color: '#ef4444', fontFamily: 'Share Tech Mono, monospace', fontSize: '3rem', margin: 0, textShadow: '0 0 15px rgba(239, 68, 68, 0.8)' }}>
           {formatTime(timeLeft)}
@@ -183,10 +168,7 @@ export default function MainRoom({ timeLeft, unlockedCabinets, onOpenPuzzle, onA
         <p style={{fontSize: '0.9rem', color: '#9ca3af', textAlign: 'center', marginTop: '10px'}}>Use WASD to move, Space to interact</p>
       </div>
 
-      {/* 60FPS Render Surface */}
       <div className="game-map" style={{ width: MAP_WIDTH, height: MAP_HEIGHT }}>
-        
-        {/* Render Static Objects */}
         {OBJECTS.map(obj => {
           if (obj.type === 'door') {
             return (
@@ -219,7 +201,6 @@ export default function MainRoom({ timeLeft, unlockedCabinets, onOpenPuzzle, onA
           return null;
         })}
 
-        {/* Render Player via DOM Ref */}
         <div 
           ref={playerRef}
           className="player-character"
@@ -229,7 +210,6 @@ export default function MainRoom({ timeLeft, unlockedCabinets, onOpenPuzzle, onA
             <path d="M12 2L4 20L12 16L20 20L12 2Z" fill="#334155"/>
           </svg>
         </div>
-        
       </div>
     </div>
   );
