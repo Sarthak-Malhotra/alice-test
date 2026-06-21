@@ -1,36 +1,24 @@
-import { useState, useEffect } from 'react';
-import { Spade, Club, Diamond, Heart, DoorClosed, DoorOpen, User } from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import { Spade, Club, Diamond, Heart, DoorClosed, DoorOpen } from 'lucide-react';
 
-const MAP_WIDTH = 15;
-const MAP_HEIGHT = 11;
+const MAP_WIDTH = 960;
+const MAP_HEIGHT = 720;
+const PLAYER_SIZE = 48;
+const CABINET_SIZE = 64;
+const DOOR_WIDTH = 120;
+const DOOR_HEIGHT = 32;
 
-// Tile types:
-// 0 = Floor
-// 1 = Wall
-// 2 = Door (Exit)
-// 3 = Spades Cabinet
-// 4 = Clubs Cabinet
-// 5 = Diamonds Cabinet
-// 6 = Hearts Cabinet
-
-const MAP = [
-  [1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1],
-  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-  [1, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 1],
-  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-  [1, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 0, 1],
-  [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+const OBJECTS = [
+  { id: 'escape', type: 'door', x: (MAP_WIDTH - DOOR_WIDTH) / 2, y: 0, width: DOOR_WIDTH, height: DOOR_HEIGHT },
+  { id: 'spades', type: 'cabinet', x: 100, y: 100, width: CABINET_SIZE, height: CABINET_SIZE, suit: 'spades', icon: Spade, color: 'var(--spade-color)' },
+  { id: 'clubs', type: 'cabinet', x: MAP_WIDTH - 100 - CABINET_SIZE, y: 100, width: CABINET_SIZE, height: CABINET_SIZE, suit: 'clubs', icon: Club, color: 'var(--club-color)' },
+  { id: 'diamonds', type: 'cabinet', x: 100, y: MAP_HEIGHT - 100 - CABINET_SIZE, width: CABINET_SIZE, height: CABINET_SIZE, suit: 'diamonds', icon: Diamond, color: 'var(--diamond-color)' },
+  { id: 'hearts', type: 'cabinet', x: MAP_WIDTH - 100 - CABINET_SIZE, y: MAP_HEIGHT - 100 - CABINET_SIZE, width: CABINET_SIZE, height: CABINET_SIZE, suit: 'hearts', icon: Heart, color: 'var(--heart-color)' }
 ];
 
-export default function MainRoom({ timeLeft, unlockedCabinets, onOpenPuzzle, onAttemptEscape, escaped, isPuzzleActive }) {
-  const [pos, setPos] = useState({ x: 7, y: 5 });
-  const [dir, setDir] = useState('DOWN'); // 'UP', 'DOWN', 'LEFT', 'RIGHT'
+const SPEED = 300; // pixels per second
 
+export default function MainRoom({ timeLeft, unlockedCabinets, onOpenPuzzle, onAttemptEscape, escaped, isPuzzleActive }) {
   const formatTime = (seconds) => {
     const m = Math.floor(seconds / 60).toString().padStart(2, '0');
     const s = (seconds % 60).toString().padStart(2, '0');
@@ -39,106 +27,150 @@ export default function MainRoom({ timeLeft, unlockedCabinets, onOpenPuzzle, onA
 
   const allUnlocked = Object.values(unlockedCabinets).every(Boolean);
 
+  const keys = useRef({});
+  const pos = useRef({ x: (MAP_WIDTH - PLAYER_SIZE) / 2, y: (MAP_HEIGHT - PLAYER_SIZE) / 2 });
+  const dir = useRef('DOWN');
+  const playerRef = useRef(null);
+  const requestRef = useRef();
+  const lastTimeRef = useRef(0);
+  const isInteracting = useRef(false);
+
+  // Check collision between two rectangles
+  const isColliding = (rect1, rect2) => {
+    return (
+      rect1.x < rect2.x + rect2.width &&
+      rect1.x + rect1.width > rect2.x &&
+      rect1.y < rect2.y + rect2.height &&
+      rect1.y + rect1.height > rect2.y
+    );
+  };
+
+  // Keyboard Event Listeners
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (isPuzzleActive || escaped) return;
-
-      let nextX = pos.x;
-      let nextY = pos.y;
-      let nextDir = dir;
-      let interacted = false;
-
-      switch (e.key) {
-        case 'w': case 'W': case 'ArrowUp':
-          nextY -= 1; nextDir = 'UP'; break;
-        case 's': case 'S': case 'ArrowDown':
-          nextY += 1; nextDir = 'DOWN'; break;
-        case 'a': case 'A': case 'ArrowLeft':
-          nextX -= 1; nextDir = 'LEFT'; break;
-        case 'd': case 'D': case 'ArrowRight':
-          nextX += 1; nextDir = 'RIGHT'; break;
-        case ' ': case 'Spacebar':
-          interacted = true; break;
-        default:
-          return;
+      keys.current[e.key.toLowerCase()] = true;
+      if (e.key === ' ' || e.key === 'Spacebar') {
+        isInteracting.current = true;
+        e.preventDefault();
       }
-
-      e.preventDefault(); // Prevent scrolling
-
-      if (interacted) {
-        // Check tile in front of player
-        let faceX = pos.x;
-        let faceY = pos.y;
-        if (dir === 'UP') faceY -= 1;
-        if (dir === 'DOWN') faceY += 1;
-        if (dir === 'LEFT') faceX -= 1;
-        if (dir === 'RIGHT') faceX += 1;
-
-        if (faceY >= 0 && faceY < MAP_HEIGHT && faceX >= 0 && faceX < MAP_WIDTH) {
-          const tile = MAP[faceY][faceX];
-          if (tile === 2) {
-            if (allUnlocked) onAttemptEscape();
-          } else if (tile === 3 && !unlockedCabinets.spades) onOpenPuzzle('spades');
-          else if (tile === 4 && !unlockedCabinets.clubs) onOpenPuzzle('clubs');
-          else if (tile === 5 && !unlockedCabinets.diamonds) onOpenPuzzle('diamonds');
-          else if (tile === 6 && !unlockedCabinets.hearts) onOpenPuzzle('hearts');
-        }
-        return;
-      }
-
-      // Movement Collision
-      if (nextDir !== dir) setDir(nextDir);
-      
-      if (nextY >= 0 && nextY < MAP_HEIGHT && nextX >= 0 && nextX < MAP_WIDTH) {
-        const tile = MAP[nextY][nextX];
-        if (tile === 0) { // Only walk on floor
-          setPos({ x: nextX, y: nextY });
-        }
+    };
+    const handleKeyUp = (e) => {
+      keys.current[e.key.toLowerCase()] = false;
+      if (e.key === ' ' || e.key === 'Spacebar') {
+        isInteracting.current = false;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [pos, dir, isPuzzleActive, escaped, allUnlocked, unlockedCabinets]);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
 
-  const getTileComponent = (tileValue, x, y) => {
-    switch(tileValue) {
-      case 1: return <div key={`${x}-${y}`} className="tile tile-wall"></div>;
-      case 2: return (
-        <div key={`${x}-${y}`} className="tile tile-door" style={{borderColor: allUnlocked ? '#10b981' : '#4a5568'}}>
-          {escaped ? <DoorOpen size={32} color="#10b981"/> : <DoorClosed size={32} color="#4a5568"/>}
-        </div>
-      );
-      case 3: return (
-        <div key={`${x}-${y}`} className={`tile tile-cabinet ${unlockedCabinets.spades ? 'unlocked' : ''}`} style={{color: 'var(--spade-color)'}}>
-          <Spade size={32}/>
-        </div>
-      );
-      case 4: return (
-        <div key={`${x}-${y}`} className={`tile tile-cabinet ${unlockedCabinets.clubs ? 'unlocked' : ''}`} style={{color: 'var(--club-color)'}}>
-          <Club size={32}/>
-        </div>
-      );
-      case 5: return (
-        <div key={`${x}-${y}`} className={`tile tile-cabinet ${unlockedCabinets.diamonds ? 'unlocked' : ''}`} style={{color: 'var(--diamond-color)'}}>
-          <Diamond size={32}/>
-        </div>
-      );
-      case 6: return (
-        <div key={`${x}-${y}`} className={`tile tile-cabinet ${unlockedCabinets.hearts ? 'unlocked' : ''}`} style={{color: 'var(--heart-color)'}}>
-          <Heart size={32}/>
-        </div>
-      );
-      default: return <div key={`${x}-${y}`} className="tile tile-floor"></div>;
-    }
-  };
+  // Main Game Loop (60 FPS)
+  useEffect(() => {
+    const update = (time) => {
+      if (lastTimeRef.current !== 0 && !isPuzzleActive && !escaped) {
+        const deltaTime = (time - lastTimeRef.current) / 1000;
+        // Cap deltaTime to prevent huge jumps if tab was inactive
+        const dt = Math.min(deltaTime, 0.1);
 
+        let dx = 0;
+        let dy = 0;
+
+        if (keys.current['w'] || keys.current['arrowup']) { dy -= 1; dir.current = 'UP'; }
+        if (keys.current['s'] || keys.current['arrowdown']) { dy += 1; dir.current = 'DOWN'; }
+        if (keys.current['a'] || keys.current['arrowleft']) { dx -= 1; dir.current = 'LEFT'; }
+        if (keys.current['d'] || keys.current['arrowright']) { dx += 1; dir.current = 'RIGHT'; }
+
+        // Normalize diagonal movement
+        if (dx !== 0 && dy !== 0) {
+          const length = Math.sqrt(dx * dx + dy * dy);
+          dx /= length;
+          dy /= length;
+        }
+
+        const moveDistance = SPEED * dt;
+        let nextX = pos.current.x + dx * moveDistance;
+        let nextY = pos.current.y + dy * moveDistance;
+
+        // Map Boundary Collision
+        if (nextX < 0) nextX = 0;
+        if (nextY < 0) nextY = 0;
+        if (nextX > MAP_WIDTH - PLAYER_SIZE) nextX = MAP_WIDTH - PLAYER_SIZE;
+        if (nextY > MAP_HEIGHT - PLAYER_SIZE) nextY = MAP_HEIGHT - PLAYER_SIZE;
+
+        // Object Collision X axis
+        const rectX = { x: nextX, y: pos.current.y, width: PLAYER_SIZE, height: PLAYER_SIZE };
+        let collidesX = false;
+        for (const obj of OBJECTS) {
+          if (isColliding(rectX, obj)) collidesX = true;
+        }
+        if (!collidesX) pos.current.x = nextX;
+
+        // Object Collision Y axis
+        const rectY = { x: pos.current.x, y: nextY, width: PLAYER_SIZE, height: PLAYER_SIZE };
+        let collidesY = false;
+        for (const obj of OBJECTS) {
+          if (isColliding(rectY, obj)) collidesY = true;
+        }
+        if (!collidesY) pos.current.y = nextY;
+
+        // Handle Interaction
+        if (isInteracting.current) {
+          isInteracting.current = false; // Trigger once
+          
+          // Create an interaction box in front of the player
+          let intX = pos.current.x;
+          let intY = pos.current.y;
+          const INT_SIZE = 20;
+          
+          if (dir.current === 'UP') { intY -= INT_SIZE; }
+          if (dir.current === 'DOWN') { intY += PLAYER_SIZE; }
+          if (dir.current === 'LEFT') { intX -= INT_SIZE; }
+          if (dir.current === 'RIGHT') { intX += PLAYER_SIZE; }
+
+          const interactionRect = { 
+            x: dir.current === 'LEFT' || dir.current === 'RIGHT' ? intX : pos.current.x, 
+            y: dir.current === 'UP' || dir.current === 'DOWN' ? intY : pos.current.y, 
+            width: dir.current === 'LEFT' || dir.current === 'RIGHT' ? INT_SIZE : PLAYER_SIZE, 
+            height: dir.current === 'UP' || dir.current === 'DOWN' ? INT_SIZE : PLAYER_SIZE
+          };
+
+          for (const obj of OBJECTS) {
+            // Expand object hitboxes slightly for interaction forgiveness
+            const interactBox = { x: obj.x - 10, y: obj.y - 10, width: obj.width + 20, height: obj.height + 20 };
+            if (isColliding(interactionRect, interactBox)) {
+              if (obj.id === 'escape' && allUnlocked) onAttemptEscape();
+              else if (obj.type === 'cabinet' && !unlockedCabinets[obj.id]) onOpenPuzzle(obj.id);
+            }
+          }
+        }
+
+        // Apply DOM updates manually for 60FPS performance
+        if (playerRef.current) {
+          playerRef.current.style.transform = `translate(${pos.current.x}px, ${pos.current.y}px) rotate(${getPlayerRotation()})`;
+        }
+      }
+      
+      lastTimeRef.current = time;
+      requestRef.current = requestAnimationFrame(update);
+    };
+
+    requestRef.current = requestAnimationFrame(update);
+    return () => cancelAnimationFrame(requestRef.current);
+  }, [isPuzzleActive, escaped, allUnlocked, unlockedCabinets, onOpenPuzzle, onAttemptEscape]);
+
+  // Handle Rotation calculation for rendering
   const getPlayerRotation = () => {
-    if (dir === 'UP') return '0deg';
-    if (dir === 'DOWN') return '180deg';
-    if (dir === 'LEFT') return '-90deg';
-    if (dir === 'RIGHT') return '90deg';
-  }
+    if (dir.current === 'UP') return '0deg';
+    if (dir.current === 'DOWN') return '180deg';
+    if (dir.current === 'LEFT') return '-90deg';
+    if (dir.current === 'RIGHT') return '90deg';
+    return '0deg';
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', zIndex: 10 }}>
@@ -151,26 +183,53 @@ export default function MainRoom({ timeLeft, unlockedCabinets, onOpenPuzzle, onA
         <p style={{fontSize: '0.9rem', color: '#9ca3af', textAlign: 'center', marginTop: '10px'}}>Use WASD to move, Space to interact</p>
       </div>
 
-      {/* Grid Engine */}
-      <div className="game-map">
-        {MAP.map((row, y) => 
-          row.map((tile, x) => getTileComponent(tile, x, y))
-        )}
+      {/* 60FPS Render Surface */}
+      <div className="game-map" style={{ width: MAP_WIDTH, height: MAP_HEIGHT }}>
         
-        {/* Player Character */}
+        {/* Render Static Objects */}
+        {OBJECTS.map(obj => {
+          if (obj.type === 'door') {
+            return (
+              <div key={obj.id} className="tile-door" style={{ left: obj.x, top: obj.y, width: obj.width, height: obj.height, borderColor: allUnlocked ? '#10b981' : '#4a5568' }}>
+                {escaped ? <DoorOpen size={24} color="#10b981"/> : <DoorClosed size={24} color="#4a5568"/>}
+              </div>
+            );
+          }
+          if (obj.type === 'cabinet') {
+            const Icon = obj.icon;
+            const isUnlocked = unlockedCabinets[obj.id];
+            return (
+              <div 
+                key={obj.id} 
+                className={`tile-cabinet ${isUnlocked ? 'unlocked' : ''}`} 
+                style={{ 
+                  left: obj.x, 
+                  top: obj.y, 
+                  width: obj.width, 
+                  height: obj.height, 
+                  color: isUnlocked ? obj.color : '#a0aec0',
+                  boxShadow: isUnlocked ? `0 0 15px ${obj.color}` : 'none',
+                  borderColor: isUnlocked ? obj.color : '#475569'
+                }}
+              >
+                <Icon size={32}/>
+              </div>
+            );
+          }
+          return null;
+        })}
+
+        {/* Render Player via DOM Ref */}
         <div 
+          ref={playerRef}
           className="player-character"
-          style={{
-            gridColumnStart: pos.x + 1,
-            gridRowStart: pos.y + 1,
-            transform: `rotate(${getPlayerRotation()})`
-          }}
+          style={{ width: PLAYER_SIZE, height: PLAYER_SIZE }}
         >
-          {/* A simple arrow-like player icon facing UP by default */}
           <svg viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
             <path d="M12 2L4 20L12 16L20 20L12 2Z" fill="#e2e8f0"/>
           </svg>
         </div>
+        
       </div>
     </div>
   );
