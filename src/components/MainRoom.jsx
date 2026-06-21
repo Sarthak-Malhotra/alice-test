@@ -226,7 +226,7 @@ export default function MainRoom({ timeLeft, unlockedCabinets, onOpenPuzzle, onA
           style={{ width: PLAYER_SIZE, height: PLAYER_SIZE }}
         >
           <svg viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 2L4 20L12 16L20 20L12 2Z" fill="#e2e8f0"/>
+            <path d="M12 2L4 20L12 16L20 20L12 2Z" fill="#334155"/>
           </svg>
         </div>
         
