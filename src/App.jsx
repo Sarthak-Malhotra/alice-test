@@ -54,6 +54,7 @@ function App() {
           onOpenPuzzle={suit => setActivePuzzle(suit)}
           onAttemptEscape={() => setActivePuzzle('escape')}
           escaped={gameState === 'escaped'}
+          isPuzzleActive={activePuzzle !== null}
         />
       )}
 
