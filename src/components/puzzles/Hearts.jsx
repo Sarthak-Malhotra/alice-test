@@ -21,7 +21,7 @@ export default function Hearts({ onUnlock, onClose }) {
         <h2>The Hidden Image</h2>
         <p>To unlock this cabinet, you must see past the illusion. Look closely at the picture to find what is hidden in plain sight.</p>
         <p style={{ fontSize: '0.9rem', color: '#cbd5e1' }}>
-          Need help decrypting what you found? Use this <a href="https://www.dcode.fr/cipher-identifier" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--spade-color)' }}>Decryption Tool</a>.
+          Need help decrypting what you found? Use this <a href="https://cs-crypt.vercel.app/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--spade-color)' }}>Decryption Tool</a>.
         </p>
         
         <img src="/illusion_hearts_fnsr.png" alt="Optical Illusion" className="puzzle-image" />
