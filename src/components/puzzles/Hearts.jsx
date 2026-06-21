@@ -6,8 +6,8 @@ export default function Hearts({ onUnlock, onClose }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (input.toUpperCase() === 'SAFE') {
-      onUnlock('SAFE');
+    if (input.toUpperCase() === 'FNSR') {
+      onUnlock('FNSR');
     } else {
       setError(true);
       setTimeout(() => setError(false), 500);
@@ -20,8 +20,11 @@ export default function Hearts({ onUnlock, onClose }) {
         <button className="close-btn" onClick={onClose}>&times;</button>
         <h2>The Hidden Image</h2>
         <p>To unlock this cabinet, you must see past the illusion. Look closely at the picture to find what is hidden in plain sight.</p>
+        <p style={{ fontSize: '0.9rem', color: '#cbd5e1' }}>
+          Need help decrypting what you found? Use this <a href="https://www.dcode.fr/cipher-identifier" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--spade-color)' }}>Decryption Tool</a>.
+        </p>
         
-        <img src="/illusion_hearts.png" alt="Optical Illusion" className="puzzle-image" />
+        <img src="/illusion_hearts_fnsr.png" alt="Optical Illusion" className="puzzle-image" />
         
         <form onSubmit={handleSubmit} className="puzzle-input-group">
           <input 

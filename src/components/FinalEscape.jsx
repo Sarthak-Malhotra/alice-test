@@ -6,7 +6,7 @@ export default function FinalEscape({ onEscape, onClose }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (input.toUpperCase() === 'GATEKEY96SAFE') {
+    if (input.toUpperCase() === 'GATEKEY96FNSR') {
       onEscape();
     } else {
       setError(true);
