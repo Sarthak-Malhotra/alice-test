@@ -1,17 +1,17 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&family=Share+Tech+Mono&display=swap');
 
 :root {
-  --bg-color: #f0f4f8; /* Bright, clean, white room */
+  --bg-color: #f0f4f8;
   --text-primary: #1a202c;
   --text-secondary: #4a5568;
   --glass-bg: rgba(255, 255, 255, 0.7);
   --glass-border: rgba(255, 255, 255, 0.3);
   --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
   
-  --spade-color: #3b82f6; /* Blue */
-  --club-color: #10b981;  /* Green */
-  --diamond-color: #eab308; /* Yellow */
-  --heart-color: #ef4444; /* Red */
+  --spade-color: #3b82f6;
+  --club-color: #10b981;
+  --diamond-color: #eab308;
+  --heart-color: #ef4444;
   
   --metal-bg: linear-gradient(145deg, #e6e6e6, #ffffff);
   --metal-shadow:  20px 20px 60px #d9d9d9, -20px -20px 60px #ffffff;
@@ -31,7 +31,7 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  overflow: hidden; /* No scrolling in escape room */
+  overflow: hidden;
 }
 
 #root {

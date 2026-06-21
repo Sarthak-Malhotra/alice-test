@@ -9,7 +9,7 @@ import Hearts from './components/puzzles/Hearts';
 import FinalEscape from './components/FinalEscape';
 
 function App() {
-  const [gameState, setGameState] = useState('intro'); // 'intro', 'playing', 'escaped', 'failed'
+  const [gameState, setGameState] = useState('intro');
   const [timeLeft, setTimeLeft] = useState(3600);
   const [unlockedCabinets, setUnlockedCabinets] = useState({
     spades: false,
@@ -17,7 +17,7 @@ function App() {
     diamonds: false,
     hearts: false
   });
-  const [activePuzzle, setActivePuzzle] = useState(null); // 'spades', 'clubs', 'diamonds', 'hearts', 'escape', null
+  const [activePuzzle, setActivePuzzle] = useState(null);
 
   useEffect(() => {
     let timer;
